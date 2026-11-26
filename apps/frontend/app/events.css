@@ -1,0 +1,86 @@
+.page-section {
+  padding-block: 32px;
+}
+.page-section h1 {
+  font-size: clamp(26px, 5vw, 42px);
+  margin-block: 8px 14px;
+}
+.page-section h2 {
+  margin-block: 14px 8px;
+}
+.event-list {
+  display: grid;
+  gap: 12px;
+}
+.event-list h2 {
+  font-size: 20px;
+}
+.event-description {
+  margin-block: 14px;
+  white-space: pre-wrap;
+}
+.event-action {
+  margin-top: 14px;
+}
+.event-form {
+  display: grid;
+  justify-items: start;
+  max-width: 34rem;
+  gap: 12px;
+  margin-block: 16px;
+}
+.event-form label {
+  display: grid;
+  width: 100%;
+  gap: 5px;
+  font-weight: 650;
+}
+.event-form input,
+.event-form select,
+.event-form textarea {
+  width: 100%;
+  padding: 8px;
+  font: inherit;
+  border: 1px solid #9aacc0;
+  border-radius: 7px;
+  background: white;
+}
+.event-form textarea {
+  min-height: 88px;
+}
+.event-form button {
+  cursor: pointer;
+}
+.event-form button:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+.event-form output:empty {
+  display: none;
+}
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.report-scroll {
+  overflow-x: auto;
+  margin-top: 1rem;
+}
+.registration-report {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  text-align: left;
+}
+.registration-report caption {
+  text-align: left;
+  padding-block: 0.5rem;
+  color: var(--muted);
+}
+.registration-report th,
+.registration-report td {
+  padding: 0.65rem;
+  border-bottom: 1px solid var(--line);
+}

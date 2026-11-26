@@ -1,0 +1,12 @@
+.community-fields > button {
+  justify-self: start;
+}
+.alumni-card-engagement {
+  border-left: 5px solid #163753;
+}
+.alumni-card-ambassador {
+  border-left: 5px solid #a86912;
+}
+.alumni-card-member {
+  border-left: 5px solid var(--red);
+}

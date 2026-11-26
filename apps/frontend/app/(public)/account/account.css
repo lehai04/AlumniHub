@@ -1,0 +1,589 @@
+/* Trang vào tài khoản đứng riêng như mẫu; tài khoản đã đăng nhập vẫn dùng layout website. */
+.public-site:has(.auth-entry) > :is(.site-header, .site-footer) {
+  display: none;
+}
+.public-main:has(.auth-entry) {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: 100svh;
+  background: var(--white);
+}
+.auth-entry {
+  width: 100%;
+}
+.auth-stage {
+  --auth-sweep-duration: 2s;
+  --auth-row-duration: 650ms;
+  --auth-exit-duration: 380ms;
+  --auth-enter-delay: 1050ms;
+  --auth-enter-stagger: 90ms;
+  --auth-exit-stagger: 25ms;
+  --auth-hide-delay: 700ms;
+  position: relative;
+  width: 100%;
+  /* Phủ chiều cao màn hình; màn hình thấp vẫn cuộn được để đọc đủ form. */
+  min-height: max(100svh, 720px);
+  overflow: hidden;
+  background: var(--white);
+}
+/* Form ra trước; mảng đỏ phủ kín khung rồi mở đường chéo sang bên kia. */
+.auth-stage::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(155deg, #390000 6%, #8a0000 45%, #df0000 100%);
+  clip-path: polygon(34% 0, 100% 0, 100% 100%, 87% 100%);
+}
+.auth-stage[data-register="true"]::before {
+  clip-path: polygon(0 0, 66% 0, 13% 100%, 0 100%);
+}
+.auth-stage[data-moving="true"]::before {
+  animation: auth-sweep-login var(--auth-sweep-duration)
+    cubic-bezier(0.65, 0, 0.35, 1) both;
+}
+.auth-stage[data-moving="true"][data-register="true"]::before {
+  animation-name: auth-sweep-register;
+}
+@keyframes auth-sweep-register {
+  0%,
+  12% {
+    clip-path: polygon(34% 0, 100% 0, 100% 100%, 87% 100%);
+  }
+  58% {
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+  }
+  90%,
+  100% {
+    clip-path: polygon(0 0, 66% 0, 13% 100%, 0 100%);
+  }
+}
+@keyframes auth-sweep-login {
+  0%,
+  12% {
+    clip-path: polygon(0 0, 66% 0, 13% 100%, 0 100%);
+  }
+  58% {
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+  }
+  90%,
+  100% {
+    clip-path: polygon(34% 0, 100% 0, 100% 100%, 87% 100%);
+  }
+}
+.auth-welcome {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.auth-greeting {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 38%;
+  height: 100%;
+  padding: 24px;
+  color: white;
+  text-align: center;
+  text-transform: uppercase;
+  font-family: var(--font-display);
+  font-size: clamp(20px, 1.8vw, 32px);
+  line-height: 1.5;
+  font-weight: 700;
+  margin: 0;
+}
+.auth-welcome span {
+  display: block;
+  margin-top: 16px;
+}
+.auth-greeting-register {
+  left: 0;
+  right: auto;
+}
+.auth-greeting[aria-hidden="true"] {
+  opacity: 0;
+  filter: blur(10px);
+  transform: translateX(120%);
+}
+.auth-greeting-register[aria-hidden="true"] {
+  transform: translateX(-120%);
+}
+.auth-panel {
+  position: absolute;
+  top: 50%;
+  /* Giới hạn độ dài dòng; căn form vào giữa mỗi nửa màn hình. */
+  width: min(34%, 420px);
+  line-height: 1.5;
+  text-align: center;
+  transform: translateY(-50%);
+}
+.auth-login {
+  left: calc(25% - min(17%, 210px));
+  --auth-exit: -96px;
+}
+.auth-register {
+  right: calc(25% - min(17%, 210px));
+  --auth-exit: 96px;
+}
+.auth-panel[inert] {
+  pointer-events: none;
+  visibility: hidden;
+}
+.auth-panel > a:first-child {
+  display: inline-block;
+}
+.auth-panel img {
+  width: 160px;
+  height: auto;
+}
+.auth-panel h1 {
+  margin-block: 20px 24px;
+  font-size: clamp(24px, 1.6vw, 30px);
+  font-weight: 750;
+  letter-spacing: 0.025em;
+  text-transform: uppercase;
+  color: #151515;
+}
+.auth-panel h1:focus {
+  outline: none;
+}
+/* Hai cột bên cân nhau để tiêu đề vẫn ở giữa khi có nút Quay lại. */
+.auth-registration-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  margin-block: 20px 6px;
+}
+.auth-registration-heading h1 {
+  grid-area: 1 / 2;
+  margin: 0;
+}
+.auth-panel .event-form,
+.auth-form {
+  display: grid;
+  gap: 18px;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  text-align: left;
+}
+.auth-fields {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+  border: 0;
+}
+.auth-fields[hidden] {
+  display: none;
+}
+.auth-fields legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.auth-panel label {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  font-size: 14px;
+  font-weight: 500;
+}
+.auth-panel :is(input, select) {
+  width: 100%;
+  min-width: 0;
+  min-height: 38px;
+  border: 0;
+  border-bottom: 1px solid #b9bbc3;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text);
+  padding: 4px 0;
+  font: inherit;
+  font-size: 16px;
+}
+.auth-panel :is(input, select):focus-visible {
+  outline: none;
+  border-bottom: 2px solid #009bff;
+  box-shadow: 0 1px #009bff;
+}
+.auth-panel .button {
+  justify-self: center;
+  min-height: 44px;
+  min-width: 140px;
+  padding: 10px 28px;
+  border-radius: 99px;
+  font-size: 14px;
+  transition:
+    background-color 180ms ease,
+    box-shadow 180ms ease;
+}
+.auth-panel .button:hover:not(:disabled) {
+  background: var(--red-dark);
+  box-shadow: 0 6px 16px #a9152826;
+}
+.auth-panel .button:active:not(:disabled) {
+  box-shadow: 0 2px 6px #a9152826;
+}
+.auth-panel .button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+.auth-panel .event-form > .button {
+  margin-top: 8px;
+}
+.auth-switch,
+.auth-help {
+  font-size: 13px;
+  margin-top: 18px;
+}
+.auth-help {
+  display: inline-block;
+}
+.auth-switch a {
+  color: var(--red);
+  font-weight: 700;
+}
+.auth-step {
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+}
+.auth-panel small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+.auth-panel .auth-confirm {
+  display: flex;
+  align-items: start;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.auth-confirm input {
+  width: 16px;
+  min-height: 16px;
+  margin: 2px 0 0;
+  accent-color: var(--red);
+  flex-shrink: 0;
+}
+.auth-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+.auth-back {
+  grid-area: 1 / 1;
+  justify-self: start;
+  min-height: 40px;
+  padding: 4px 0;
+  border: 0;
+  border-radius: 99px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  white-space: nowrap;
+  transition:
+    color 180ms ease,
+    background-color 180ms ease;
+}
+.auth-back:hover:not(:disabled) {
+  color: var(--red-dark);
+  background: #d721340d;
+}
+.auth-panel output {
+  color: var(--red-dark);
+  font-size: 13px;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.auth-panel output:empty {
+  display: none;
+}
+.auth-panel .auth-success {
+  color: #17564a;
+  padding: 16px;
+  border: 1px solid #c1dfd4;
+  border-radius: 8px;
+}
+/* Thứ tự: logo → tiêu đề → mô tả bước → từng ô → nút → liên kết. */
+.auth-panel
+  :where(
+    h1,
+    .auth-back,
+    label,
+    .auth-step,
+    .auth-form-actions,
+    .auth-help,
+    .auth-switch,
+    output
+  ),
+.auth-panel > a:first-child,
+.auth-panel .event-form > button {
+  --auth-order: 2;
+  opacity: 1;
+  transform: translateX(0);
+  filter: blur(0);
+}
+.auth-panel > a:first-child {
+  --auth-order: 0;
+}
+.auth-panel h1 {
+  --auth-order: 1;
+}
+.auth-panel .auth-back {
+  --auth-order: 1;
+}
+.auth-panel .auth-step {
+  --auth-order: 2;
+}
+.auth-panel .auth-fields label:nth-of-type(1) {
+  --auth-order: 3;
+}
+.auth-panel .auth-fields label:nth-of-type(2) {
+  --auth-order: 4;
+}
+.auth-panel .auth-fields label:nth-of-type(3) {
+  --auth-order: 5;
+}
+.auth-panel .auth-fields label:nth-of-type(4) {
+  --auth-order: 6;
+}
+.auth-panel .auth-fields label:nth-of-type(5) {
+  --auth-order: 7;
+}
+.auth-panel .auth-fields label:nth-of-type(6) {
+  --auth-order: 8;
+}
+.auth-panel .event-form label:nth-of-type(2) {
+  --auth-order: 3;
+}
+.auth-panel .event-form > button {
+  --auth-order: 4;
+}
+.auth-panel .auth-form-actions {
+  --auth-order: 9;
+}
+.auth-panel :is(.auth-help, output) {
+  --auth-order: 5;
+}
+.auth-panel .auth-switch {
+  --auth-order: 10;
+}
+.auth-login .auth-switch {
+  --auth-order: 6;
+}
+.auth-login > .auth-help:last-child {
+  --auth-order: 7;
+}
+.auth-entry
+  .auth-stage[data-moving="true"]
+  :where(
+    .auth-greeting,
+    .auth-panel
+      :is(
+        h1,
+        .auth-back,
+        label,
+        .auth-step,
+        .auth-form-actions,
+        .auth-help,
+        .auth-switch,
+        output
+      ),
+    .auth-panel > a:first-child,
+    .auth-panel .event-form > button
+  ) {
+  transition:
+    transform var(--auth-row-duration) cubic-bezier(0.22, 1, 0.36, 1),
+    opacity var(--auth-row-duration) ease-out,
+    filter var(--auth-row-duration) ease,
+    background-color 180ms ease,
+    box-shadow 180ms ease,
+    color 180ms ease;
+  --auth-delay: calc(
+    var(--auth-enter-delay) +
+    var(--auth-order, 0) *
+    var(--auth-enter-stagger)
+  );
+  transition-delay:
+    var(--auth-delay), var(--auth-delay), var(--auth-delay), 0s, 0s, 0s;
+  /* Khởi tạo từng hàng khi form vừa hiện từ display:none trên điện thoại. */
+  @starting-style {
+    opacity: 0;
+    transform: translateX(var(--auth-exit, 0px));
+    filter: blur(4px);
+  }
+}
+.auth-stage
+  .auth-panel[inert]
+  :is(
+    h1,
+    .auth-back,
+    label,
+    .auth-step,
+    .auth-form-actions,
+    .auth-help,
+    .auth-switch,
+    output
+  ),
+.auth-stage .auth-panel[inert] > a:first-child,
+.auth-stage .auth-panel[inert] .event-form > button {
+  opacity: 0;
+  transform: translateX(var(--auth-exit));
+  filter: blur(4px);
+  transition-duration: var(--auth-exit-duration);
+  transition-delay: calc(var(--auth-order) * var(--auth-exit-stagger));
+}
+.auth-stage[data-moving="true"] .auth-panel {
+  transition: visibility 0s;
+}
+.auth-stage[data-moving="true"] .auth-panel[inert] {
+  transition-delay: var(--auth-hide-delay);
+}
+.auth-stage[data-moving="true"] .auth-greeting[aria-hidden="true"] {
+  transition-delay: 0s;
+}
+@media (max-width: 820px), (max-width: 1000px) and (max-height: 500px) {
+  .auth-stage {
+    /* Thu phần chào mừng theo chiều cao máy; ưu tiên chỗ cho các ô nhập. */
+    --auth-mobile-banner: clamp(128px, 20svh, 160px);
+    --auth-row-duration: 480ms;
+    --auth-exit-duration: 240ms;
+    --auth-enter-delay: 120ms;
+    --auth-enter-stagger: 55ms;
+    min-height: 100svh;
+    padding-top: var(--auth-mobile-banner);
+  }
+  .auth-stage::before {
+    height: var(--auth-mobile-banner);
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 78%);
+  }
+  .auth-stage[data-register="true"]::before {
+    clip-path: polygon(0 0, 100% 0, 100% 78%, 0 100%);
+  }
+  .auth-greeting {
+    width: 100%;
+    height: calc(var(--auth-mobile-banner) - 24px);
+    padding: 16px;
+    font-size: clamp(17px, 4.8vw, 20px);
+    line-height: 1.4;
+  }
+  .auth-welcome span {
+    margin-top: 8px;
+  }
+  .auth-stage[data-moving="true"]::before {
+    animation: none;
+    transition: clip-path var(--auth-row-duration) ease;
+  }
+  .auth-panel {
+    position: relative;
+    top: auto;
+    width: min(420px, calc(100% - 40px));
+    left: auto;
+    right: auto;
+    margin: 20px auto max(28px, env(safe-area-inset-bottom));
+    transform: none;
+  }
+  .auth-panel[inert] {
+    display: none;
+    transform: none;
+  }
+  .auth-panel h1 {
+    font-size: 24px;
+  }
+  .auth-panel > h1 {
+    margin-block: 16px 20px;
+  }
+  .auth-panel img {
+    width: 144px;
+  }
+  .auth-registration-heading {
+    margin-block: 16px 4px;
+  }
+  .auth-panel .event-form,
+  .auth-form {
+    gap: 16px;
+  }
+  .auth-fields {
+    gap: 12px;
+  }
+  .auth-panel input:not([type="checkbox"]) {
+    min-height: 44px;
+  }
+  .auth-panel .button {
+    min-height: 46px;
+    min-width: 160px;
+  }
+  .auth-panel .auth-back,
+  .auth-panel .password-field > .password-toggle {
+    min-height: 44px;
+  }
+  .auth-login {
+    --auth-exit: -24px;
+  }
+  .auth-register {
+    --auth-exit: 24px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-stage {
+    --auth-sweep-duration: 0s;
+    --auth-row-duration: 0s;
+    --auth-exit-duration: 0s;
+    --auth-enter-delay: 0s;
+    --auth-enter-stagger: 0s;
+    --auth-exit-stagger: 0s;
+    --auth-hide-delay: 0s;
+  }
+}
+.account-hub {
+  width: min(100%, 50rem);
+  margin-inline: auto;
+}
+.account-profile-card {
+  display: grid;
+  gap: 0.55rem;
+  max-width: 35rem;
+  padding: clamp(1rem, 4vw, 1.8rem);
+  border-radius: 1.2rem;
+}
+.account-profile-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+}
+.account-profile-heading h2 {
+  margin: 0;
+}
+.account-profile-heading span {
+  border-radius: 999px;
+  padding: 0.25rem 0.6rem;
+  background: #ebf3fa;
+  color: #002b49;
+  font-size: 0.8rem;
+  font-weight: 750;
+}
+.account-profile-pending {
+  border-color: #eac373;
+}
+.account-profile-pending .account-profile-heading span {
+  background: #fef3c7;
+  color: #78350f;
+}

@@ -1,0 +1,121 @@
+name: Verify and release
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24.19.0
+          cache: npm
+      - run: npm run setup
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npm run audit
+      - name: Smoke test the image, migrations, and PostgreSQL
+        run: |
+          export LOCAL_AUTH_ENABLED=true
+          export LOCAL_ADMIN_PASSWORD="$(openssl rand -hex 24)"
+          export LOCAL_ALUMNI_PASSWORD="$(openssl rand -hex 24)"
+          export LOCAL_REVIEWER_PASSWORD="$(openssl rand -hex 24)"
+          export PUBLIC_SITE_URL=https://alumni.example.test
+          export PUBLIC_INDEXING_ENABLED=true
+          docker compose up --build --wait --wait-timeout 120
+          curl --fail --silent --show-error http://127.0.0.1:8081/health
+          curl --fail --silent --show-error http://127.0.0.1:8081/ready
+          curl --fail --silent --show-error http://127.0.0.1:8080/ready
+          SMOKE_HOMEPAGE=1 SMOKE_SEO_ORIGIN="$PUBLIC_SITE_URL" npm run test:smoke
+          docker compose run --rm --no-deps migrate
+          npm run db:seed
+          npm run db:seed
+          test "$(docker compose exec -T db psql -U alumni -d alumni -Atc "SELECT count(*) FROM public.events WHERE slug = 'demo-alumni-meetup'")" = 1
+      - name: Remove disposable containers and database
+        if: always()
+        run: docker compose down --volumes
+
+  # Chỉ phát hành image có digest cố định sau khi các bước kiểm tra đạt yêu cầu.
+  publish:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.image.outputs.ref }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Build and publish the release image
+        id: image
+        env:
+          GHCR_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          repo="ghcr.io/${GITHUB_REPOSITORY,,}"
+          tag="$repo:$GITHUB_SHA"
+          version="$(node -p 'require("./package.json").version')"
+          trap 'docker logout ghcr.io >/dev/null 2>&1 || true' EXIT
+          printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          docker build --build-arg "APP_VERSION=$version" --build-arg "COMMIT_SHA=$GITHUB_SHA" -t "$tag" .
+          push_output="$(docker push "$tag")"
+          digest="$(sed -nE 's/.*digest: (sha256:[a-f0-9]{64}).*/\1/p' <<< "$push_output")"
+          [[ "$digest" =~ ^sha256:[a-f0-9]{64}$ ]]
+          printf 'ref=%s@%s\n' "$repo" "$digest" >> "$GITHUB_OUTPUT"
+
+  staging:
+    if: vars.ENABLE_STAGING == 'true'
+    needs: publish
+    runs-on: [self-hosted, linux, alumni-staging]
+    environment: staging
+    concurrency: alumni-staging
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Deploy staging
+        env:
+          IMAGE: ${{ needs.publish.outputs.image }}
+          PUBLIC_SITE_URL: ${{ vars.PUBLIC_SITE_URL }}
+          PUBLIC_INDEXING_ENABLED: "false"
+          COMPOSE_PROJECT_NAME: alumni-staging
+          RUNTIME_ENV_FILE: /etc/alumni-hub/runtime.env
+          MIGRATION_ENV_FILE: /etc/alumni-hub/migration.env
+          RELEASE_STATE_DIR: /var/lib/alumni-hub/releases
+        run: bash deploy/deploy.sh "$IMAGE"
+
+  # Sau khi được duyệt, triển khai lên production đúng image đã kiểm tra trên staging.
+  production:
+    if: vars.ENABLE_PRODUCTION == 'true'
+    needs: [publish, staging]
+    runs-on: [self-hosted, linux, alumni-production]
+    environment: production
+    concurrency: alumni-production
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Promote the staging digest
+        env:
+          IMAGE: ${{ needs.publish.outputs.image }}
+          PUBLIC_SITE_URL: ${{ vars.PUBLIC_SITE_URL }}
+          PUBLIC_INDEXING_ENABLED: ${{ vars.PUBLIC_INDEXING_ENABLED }}
+          COMPOSE_PROJECT_NAME: alumni-production
+          RUNTIME_ENV_FILE: /etc/alumni-hub/runtime.env
+          MIGRATION_ENV_FILE: /etc/alumni-hub/migration.env
+          RELEASE_STATE_DIR: /var/lib/alumni-hub/releases
+        run: bash deploy/deploy.sh "$IMAGE"

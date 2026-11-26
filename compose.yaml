@@ -1,0 +1,70 @@
+# Dịch vụ web và tác vụ cập nhật cấu trúc cơ sở dữ liệu dùng chung image và kết nối PostgreSQL local.
+x-local-app: &local-app
+  image: alumni-hub:dev
+  build: .
+  environment:
+    APP_ENV: dev
+    DATABASE_URL: postgresql://alumni:${POSTGRES_PASSWORD:?Run npm run setup}@db:5432/alumni
+
+services:
+  db:
+    image: postgres:17.12-bookworm
+    environment:
+      POSTGRES_USER: alumni
+      POSTGRES_DB: alumni
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Run npm run setup}
+    ports:
+      - "127.0.0.1:${DEV_DB_PORT:-55432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-U", "alumni", "-d", "alumni"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+  migrate:
+    <<: *local-app
+    command: ["node", "apps/backend/dist/scripts/migrate.js"]
+    depends_on:
+      db:
+        condition: service_healthy
+  backend:
+    <<: *local-app
+    environment:
+      APP_ENV: dev
+      DATABASE_URL: postgresql://alumni:${POSTGRES_PASSWORD:?Run npm run setup}@db:5432/alumni
+      LOCAL_AUTH_ENABLED: ${LOCAL_AUTH_ENABLED:-false}
+      LOCAL_ADMIN_PASSWORD: ${LOCAL_ADMIN_PASSWORD:-}
+      LOCAL_ALUMNI_PASSWORD: ${LOCAL_ALUMNI_PASSWORD:-}
+      LOCAL_REVIEWER_PASSWORD: ${LOCAL_REVIEWER_PASSWORD:-}
+    ports:
+      - "127.0.0.1:${BACKEND_PORT:-8081}:8081"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8081/ready').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+  web:
+    image: alumni-hub:dev
+    build: .
+    command: ["node", "node_modules/next/dist/bin/next", "start", "apps/frontend", "-H", "0.0.0.0", "-p", "8080"]
+    environment:
+      BACKEND_URL: http://backend:8081
+      PUBLIC_SITE_URL: ${PUBLIC_SITE_URL:-}
+      PUBLIC_INDEXING_ENABLED: ${PUBLIC_INDEXING_ENABLED:-false}
+    ports:
+      - "127.0.0.1:${HTTP_PORT:-8080}:8080"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/ready').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+volumes:
+  postgres-data:

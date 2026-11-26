@@ -1,0 +1,62 @@
+services:
+  # Chạy migration trong một tác vụ riêng với tài khoản cơ sở dữ liệu dành cho việc cập nhật cấu trúc.
+  migrate:
+    image: ${IMAGE:?An immutable release digest is required}
+    env_file: ${MIGRATION_ENV_FILE:?An absolute migration env file is required}
+    command: ["node", "apps/backend/dist/scripts/migrate.js"]
+    profiles: [migration]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+  backend:
+    image: ${IMAGE:?An immutable release digest is required}
+    env_file: ${RUNTIME_ENV_FILE:?An absolute runtime env file is required}
+    environment:
+      PORT: "8081"
+      HOST: 0.0.0.0
+      LOCAL_AUTH_ENABLED: "false"
+    restart: unless-stopped
+    init: true
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    stop_grace_period: 12s
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8081/ready').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+  # HTTPS vẫn do reverse proxy trên máy chủ xử lý tại cổng cũ của web.
+  web:
+    image: ${IMAGE:?An immutable release digest is required}
+    command: ["node", "node_modules/next/dist/bin/next", "start", "apps/frontend", "-H", "0.0.0.0", "-p", "8080"]
+    environment:
+      BACKEND_URL: http://backend:8081
+      PUBLIC_SITE_URL: ${PUBLIC_SITE_URL:-}
+      PUBLIC_INDEXING_ENABLED: ${PUBLIC_INDEXING_ENABLED:-false}
+    ports:
+      - "127.0.0.1:${HTTP_PORT:-8080}:8080"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    init: true
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/ready').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"

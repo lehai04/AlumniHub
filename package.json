@@ -1,0 +1,38 @@
+{
+  "name": "alumni-hub",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/backend",
+    "apps/frontend"
+  ],
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "scripts": {
+    "setup": "npm ci && node scripts/setup.mjs",
+    "dev": "node scripts/dev.mjs",
+    "admin": "node scripts/admin.mjs",
+    "lint": "biome check",
+    "typecheck": "npm run typecheck --workspaces",
+    "format": "biome format --write",
+    "test": "npm test --workspace @alumni/backend",
+    "check": "node scripts/check.mjs",
+    "test:smoke": "node --env-file-if-exists=.env scripts/smoke.mjs",
+    "local:accounts": "node scripts/local-accounts.mjs",
+    "build": "npm run build --workspaces",
+    "start": "docker compose up --build --wait",
+    "run": "npm start",
+    "deploy": "bash deploy/deploy.sh",
+    "rollback": "bash deploy/rollback.sh",
+    "clean": "node scripts/clean.mjs",
+    "db:migrate": "docker compose run --rm migrate",
+    "db:seed": "docker compose run --rm migrate node apps/backend/dist/scripts/seed.js",
+    "demo:seed": "node --env-file=.env apps/backend/scripts/seed.ts",
+    "audit": "npm audit --audit-level=high"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.6.8"
+  }
+}
